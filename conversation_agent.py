@@ -32,13 +32,13 @@ class ConversationAgent:
                 })
 
 
-    def ask_llm(self, user_interaction):
+    def ask_llm(self, user_interaction, model):
 
         self.update_history(role="user", content=user_interaction)
 
         response = self.client.chat.completions.create(
             messages=self.history,
-            model="llama-3.3-70b-versatile"
+            model=model
         ).choices[0].message.content
         
         self.update_history(role="assistant", content=response)
