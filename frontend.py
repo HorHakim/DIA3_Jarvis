@@ -7,6 +7,8 @@ import base64
 if "chat_agent" not in streamlit.session_state :
 	streamlit.session_state.chat_agent = ChatAgent()
 
+if "uploader_key" not in streamlit.session_state:
+    streamlit.session_state.uploader_key = 0
 
 
 def init_header():
@@ -16,7 +18,7 @@ def init_header():
 
 
 
-def show_discussion_history(history_placeholder): # je veux pouvoir afficher les images de l'historique
+def show_discussion_history(history_placeholder):
 
 	container = history_placeholder.container()
 	with container:
@@ -44,7 +46,7 @@ def user_interface():
 						"📎 Chargez une Image",
 						type=["png", "jpg", "jpeg"],               # Autoriser tous les types ; précisez si besoin
 						accept_multiple_files=False,
-						key="file_uploader",
+						key=streamlit.session_state.uploader_key
 				)
 		_, col2 = streamlit.columns([2, 1])
 		with col2:
@@ -53,6 +55,7 @@ def user_interface():
 
 		if user_input:
 			if uploaded_file:
+
 				image_b64 = ChatAgent.format_streamlit_image_to_base64(streamlit_file_object=uploaded_file)
 				response = streamlit.session_state.chat_agent.ask_vision_model(
 					user_interaction=user_input,
@@ -61,9 +64,11 @@ def user_interface():
 
 			else:
 				streamlit.session_state.chat_agent.ask_llm(user_interaction=user_input)
+
 			
 			show_discussion_history(history_placeholder)
-
+			streamlit.session_state.uploader_key += 1
+			streamlit.rerun()
 
 
 if __name__ == "__main__":

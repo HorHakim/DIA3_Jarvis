@@ -41,8 +41,6 @@ class ChatAgent:
 
 
 
-
-
 	def initiate_history(self):
 		self.history = [
 			{
@@ -63,9 +61,20 @@ class ChatAgent:
 
 	def get_history(self, type_model):# Il reste à coder le filtre sur l'historique pour enlever les images en base64
 		if type_model == "large_language_model":
-			filtred_history = None
-			# on devra les images en base64 par des flags [IMAGE]
-			return self.history
+			filtred_history = []
+			for message in self.history:
+				if type(message["content"]) == str:
+					filtred_history.append(message)
+
+				elif type(message["content"]) == list:
+					filtred_history.append(
+								{
+									"role": message["role"],
+									"content": f"{message["content"][0]["text"]} : [IMAGE]",
+								})
+
+
+			return filtred_history
 		
 		elif type_model == "vision_model":
 			return self.history
@@ -97,7 +106,7 @@ class ChatAgent:
                             "type": "image_url",
                             "image_url": {
                                 "url": f"{image_b64}",
-                            },
+                        },
                         },
                     ]
 
