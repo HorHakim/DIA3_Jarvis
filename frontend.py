@@ -36,8 +36,31 @@ def user_interface():
 			selected_model = streamlit.selectbox("Choisis ton modèle gamin...", LLM_MODELS)
 
 		if user_input:
-			streamlit.session_state.conversation_agent.ask_llm(user_interaction=user_input, model=selected_model)
+			result = streamlit.session_state.conversation_agent.ask_llm(
+				user_interaction=user_input,
+				model=selected_model,
+				include_audio=True,
+			)
 			show_discussion_history(history_placeholder)
+
+			if isinstance(result, dict):
+				if result.get("audio"):
+					streamlit.audio(
+						result["audio"],
+						format=result.get("mime_type", "audio/wav"),
+					)
+					streamlit.caption(
+						f"Audio généré ({result.get('audio_len', 0)} octets, "
+						f"mime={result.get('mime_type', 'audio/wav')})"
+					)
+					streamlit.download_button(
+						"Télécharger l'audio",
+						data=result["audio"],
+						file_name="jarvis.wav",
+						mime=result.get("mime_type", "audio/wav"),
+					)
+				else:
+					streamlit.caption("Audio non généré (TTS indisponible)")
 
 
 
