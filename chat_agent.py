@@ -1,6 +1,7 @@
 from groq import Groq
 from dotenv import load_dotenv
 import os
+from tts_gemini import text_to_speech
 
 
 class ConversationAgent:
@@ -30,17 +31,17 @@ class ConversationAgent:
             }
         )
 
+    # ========= STT : audio (bytes) -> texte =========
     def stt_audio_to_text_bytes(
         self,
         audio_bytes: bytes,
-        filename: str,
-        mime_type: str,
+        filename: str = "audio.m4a",
         stt_model: str = "whisper-large-v3",
         language: str = "fr",
         prompt: str | None = None,
     ) -> str:
         transcription = self.client.audio.transcriptions.create(
-            file=(filename, audio_bytes, mime_type),
+            file=(filename, audio_bytes),
             model=stt_model,
             response_format="json",
             language=language,
@@ -48,35 +49,6 @@ class ConversationAgent:
             prompt=prompt,
         )
         return (transcription.text or "").strip()
-
-    def ask_llm_from_audio(
-        self,
-        audio_bytes: bytes,
-        model: str,
-        mime_type: str,
-        filename: str,
-        stt_model: str = "whisper-large-v3",
-        language: str = "fr",
-        prompt: str | None = None,
-    ) -> str:
-        user_text = self.stt_audio_to_text_bytes(
-            audio_bytes=audio_bytes,
-            filename=filename,
-            mime_type=mime_type,
-            stt_model=stt_model,
-            language=language,
-            prompt=prompt,
-        )
-
-        if not user_text:
-            user_text = "Je n’ai pas compris ton audio, parle plus clairement gamin."
-
-        response = self.ask_llm(
-            user_interaction=user_text,
-            model=model,
-        )
-
-        return response
 
     # ========= LLM texte -> texte =========
     def ask_llm(self, user_interaction: str, model: str) -> str:
@@ -91,6 +63,61 @@ class ConversationAgent:
 
         return response
 
+    # ========= Pipeline : TEXTE -> LLM -> TTS =========
+    def ask_llm_with_tts(
+        self,
+        user_interaction: str,
+        model: str,
+        voice_name: str = "Kore",
+    ) -> tuple[str, bytes]:
+        answer_text = self.ask_llm(
+            user_interaction=user_interaction,
+            model=model,
+        )
+
+        audio_bytes = text_to_speech(
+            text=answer_text,
+            voice_name=voice_name,
+            as_wav=True,
+        )
+
+        return answer_text, audio_bytes
+
+    # ========= Pipeline : AUDIO -> STT -> LLM -> TTS =========
+    def ask_llm_from_audio_with_tts(
+        self,
+        audio_bytes: bytes,
+        model: str,
+        filename: str = "audio.m4a",
+        stt_model: str = "whisper-large-v3",
+        language: str = "fr",
+        voice_name: str = "Kore",
+        prompt: str | None = None,
+    ) -> tuple[str, bytes]:
+        user_text = self.stt_audio_to_text_bytes(
+            audio_bytes=audio_bytes,
+            filename=filename,
+            stt_model=stt_model,
+            language=language,
+            prompt=prompt,
+        )
+
+        if not user_text:
+            user_text = "Je n’ai pas compris ton audio, parle plus clairement gamin."
+
+        answer_text = self.ask_llm(
+            user_interaction=user_text,
+            model=model,
+        )
+
+        audio_answer = text_to_speech(
+            text=answer_text,
+            voice_name=voice_name,
+            as_wav=True,
+        )
+
+        return answer_text, audio_answer
+
     def terminal_user_interface(self, model: str) -> None:
         while True:
             user_interaction = input("Vous : ")
@@ -99,8 +126,11 @@ class ConversationAgent:
             elif user_interaction == "":
                 print("Jarvis : Vous n'avez rien à dire ?")
             else:
-                response = self.ask_llm(user_interaction=user_interaction, model=model)
-                print(f"Jarvis : {response}")
+                answer_text, _ = self.ask_llm_with_tts(
+                    user_interaction=user_interaction,
+                    model=model,
+                )
+                print(f"Jarvis : {answer_text}")
 
 
 if __name__ == "__main__":

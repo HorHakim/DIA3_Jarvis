@@ -2,3 +2,6 @@ groq
 python-dotenv
 streamlit
 discord.py
+google-genai
+gTTS
+genai
