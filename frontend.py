@@ -1,10 +1,17 @@
 import streamlit
 from conversation_agent import ConversationAgent 
 from config import LLM_MODELS
+from tts_gemini import text_to_speech
 
 
 if "conversation_agent" not in streamlit.session_state:
     streamlit.session_state.conversation_agent = ConversationAgent()
+
+
+@streamlit.cache_data(show_spinner=False)
+def get_tts_audio(text: str) -> bytes:
+    """Cache le TTS pour ne pas regénérer l'audio à chaque rerun."""
+    return text_to_speech(text)
 
 
 def init_header():
@@ -20,6 +27,9 @@ def show_discussion_history(history_placeholder):
             if message["role"] != "system":
                 with streamlit.chat_message(message["role"]):
                     streamlit.write(message["content"])
+                    if message["role"] == "assistant":
+                        audio_bytes = get_tts_audio(message["content"])
+                        streamlit.audio(audio_bytes, format="audio/wav")
 
 
 def user_interface():
@@ -34,32 +44,35 @@ def user_interface():
         _, col2 = streamlit.columns([2, 1])
         with col2:
             streamlit.empty()
-            selected_model = streamlit.selectbox("Choisis ton modèle gamin...", LLM_MODELS)
-            audio_file = streamlit.audio_input("🎤 Note vocale", label_visibility="collapsed")
-
-        # ----- Message TEXT -----
-        if user_input:
-            streamlit.session_state.conversation_agent.ask_llm(
-                user_interaction=user_input,
-                model=selected_model,
+            selected_model = streamlit.selectbox(
+                "Choisis ton modèle gamin...", LLM_MODELS
             )
-            show_discussion_history(history_placeholder)
-
-        # ----- Message AUDIO -----
-        if audio_file is not None:
-            audio_bytes = audio_file.read()                # IMPORTANT
-            mime_type = audio_file.type                   # ex: audio/webm
-            extension = mime_type.split("/")[-1]          # webm, mp4, wav, mp3...
-            filename = f"audio.{extension}"               # ex: audio.webm
-
-            streamlit.session_state.conversation_agent.ask_llm_from_audio(
-                audio_bytes=audio_bytes,
-                model=selected_model,
-                mime_type=mime_type,
-                filename=filename,
+            audio_file = streamlit.audio_input(
+                "🎤 Note vocale", label_visibility="collapsed"
             )
 
-            show_discussion_history(history_placeholder)
+    # TEXTE
+    if user_input:
+        streamlit.session_state.conversation_agent.ask_llm(
+            user_interaction=user_input,
+            model=selected_model,
+        )
+        show_discussion_history(history_placeholder)
+
+    # AUDIO (note vocale)
+    if audio_file is not None:
+        audio_bytes = audio_file.read()
+        mime_type = audio_file.type
+        extension = mime_type.split("/")[-1]
+        filename = f"audio.{extension}"
+
+        streamlit.session_state.conversation_agent.ask_llm_from_audio(
+            audio_bytes=audio_bytes,
+            model=selected_model,
+            mime_type="audio/wav",
+            filename=filename,
+        )
+        show_discussion_history(history_placeholder)
 
 
 if __name__ == "__main__":

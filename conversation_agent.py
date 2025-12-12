@@ -30,7 +30,6 @@ class ConversationAgent:
             }
         )
 
-    # ========= STT : audio (bytes) -> texte =========
     def stt_audio_to_text_bytes(
         self,
         audio_bytes: bytes,
@@ -92,7 +91,6 @@ class ConversationAgent:
 
         return response
 
-    # ========= Interface terminal (texte) =========
     def terminal_user_interface(self, model: str) -> None:
         while True:
             user_interaction = input("Vous : ")

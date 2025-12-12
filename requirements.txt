@@ -4,3 +4,4 @@ streamlit
 discord.py
 google-genai
 gTTS
+genai
